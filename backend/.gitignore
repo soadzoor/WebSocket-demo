@@ -1,0 +1,7 @@
+.idea/
+build/temp
+build/dev
+build/prod
+node_modules/
+tmp/
+/package-lock.json

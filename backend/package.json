@@ -1,0 +1,33 @@
+{
+  "name": "Title",
+  "version": "1.0.0",
+  "description": "Title",
+  "main": "",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "build": "node build/build",
+    "build:prod": "node build/build --prod",
+    "start": "node build/dev/js/app.bundle.js",
+    "start:prod": "node build/prod/js/app.bundle.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/express": "^4.17.13",
+    "@types/express-ws": "^3.0.1",
+    "@types/node": "16.9.3",
+    "@types/ws": "^7.4.7",
+    "esbuild": "0.12.28",
+    "express": "4.17.1",
+    "express-ws": "5.0.2",
+    "shx": "0.3.3",
+    "tslib": "2.3.1",
+    "typescript": "4.4.3"
+  }
+}
