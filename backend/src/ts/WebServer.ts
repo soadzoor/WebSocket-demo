@@ -1,15 +1,14 @@
 import express from "express";
 import expressWs from "express-ws";
 import {IncomingMessage} from "http";
-import {Server} from "ws";
 
 interface IUser
 {
 	id: string;
 	name: string;
 	color: string;
-	x: number;
-	y: number;
+	x: number | null;
+	y: number | null;
 }
 
 interface IUserWithSocket extends IUser
@@ -35,7 +34,7 @@ export class WebServer
 	{
 		this._expressWs.app.ws("/", (ws, req) =>
 		{
-			ws.send("hello!");
+			//ws.send("hello!");
 		});
 
 		const wss = this._expressWs.getWss();
@@ -47,8 +46,8 @@ export class WebServer
 			let userData: IUser = {
 				id: "placeholder",
 				color: "placeholder",
-				x: 0,
-				y: 0,
+				x: null,
+				y: null,
 				name: "placeholder"
 			};
 
@@ -89,7 +88,7 @@ export class WebServer
 		for (const user of this._users)
 		{
 			const usersExceptTheReceiver = this._users
-				.filter(u => u.id !== user.id)
+				.filter(u => u.id !== user.id && u.x != null && u.y != null)
 				.map(u =>
 				{
 					const ret = {...u};
@@ -98,10 +97,8 @@ export class WebServer
 					return ret;
 				});
 
-			if (usersExceptTheReceiver.length > 0)
-			{
-				user.socket?.send(JSON.stringify(usersExceptTheReceiver));
-			}
+
+			user.socket?.send(JSON.stringify(usersExceptTheReceiver));
 		}
 
 		setTimeout(this.tick, this._timeOutDelay);
