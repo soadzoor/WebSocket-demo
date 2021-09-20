@@ -5,11 +5,13 @@ const BUILD_TEMP = "build/temp";
 const NODE_MODULES_PATH = "./node_modules";
 const fs = require("fs"); // it's included in node.js by default, no need for any additional packages
 const args = process.argv.slice(2);
-if (args.includes("--prod"))
+
+const isProduction = args.includes("--prod");
+if (isProduction)
 {
-	process.env.NODE_ENV = "production";
+	process.env.NODE_ENV = "prod";
 }
-const isProduction = process.env.NODE_ENV === "production";
+
 const buildFolder = isProduction ? BUILD_PROD : BUILD_DEV;
 const checkForTypeErrors = !args.includes("--fast");
 

@@ -1,6 +1,7 @@
 import express from "express";
 import expressWs from "express-ws";
-import {IncomingMessage} from "http";
+import favicon from "serve-favicon";
+import http, {IncomingMessage} from "http";
 
 interface IClientMessage
 {
@@ -35,8 +36,21 @@ interface IUserWithSocket extends IUser
 	socket?: WebSocket;
 }
 
+interface IConfig
+{
+	env: "dev" | "prod";
+	httpPort: number;
+	webSocketPort: number;
+}
+
 export class WebServer
 {
+	private _config: IConfig = {
+		env: `${process.env.NODE_ENV}`.trim() as "dev" | "prod", // set NODE_ENV=dev && node ... -> this can result with a trailing space: "dev " under windows
+		httpPort: 80,
+		webSocketPort: 8081,
+	};
+
 	private _app = express();
 	private _expressWs = expressWs(this._app);
 
@@ -105,9 +119,19 @@ export class WebServer
 			};
 		});
 
-		this._expressWs.app.listen(8081, () =>
+		const config = this._config;
+
+		this._app.use(express.static(`../frontend/build/${config.env}/`));
+		this._app.use(favicon(`../frontend/build/${config.env}/assets/images/cursor.svg`));
+
+		http.createServer(this._app).listen(config.httpPort, () =>
 		{
-			console.log("Listening...");
+			console.log(`WebServer listening on port ${config.httpPort}`);
+		});
+
+		this._expressWs.app.listen(config.webSocketPort, () =>
+		{
+			console.log(`WebSocket server listening on port ${config.webSocketPort}`);
 			this.tick();
 		});
 	}
