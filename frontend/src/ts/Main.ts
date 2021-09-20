@@ -1,5 +1,4 @@
 import {PromptWindow} from "ui/popups/PromptWindow";
-import {BrowserUtils} from "utils/BrowserUtils";
 import {ColorUtils, IRGBObject} from "utils/ColorUtils";
 import {HTMLUtils} from "utils/HTMLUtils";
 import {MathUtils} from "utils/MathUtils";
@@ -40,7 +39,6 @@ interface IUser
 
 export class Main
 {
-	private _url = BrowserUtils.siteUrl;
 	private _port: number = 8081;
 
 	private _name: string = "";
@@ -62,7 +60,7 @@ export class Main
 		y: null
 	};
 
-	private _webSocket = new WebSocket(`ws://${this._url}:${this._port}`);
+	private _webSocket = new WebSocket(`ws://${location.host}:${this._port}`);
 
 	constructor()
 	{
