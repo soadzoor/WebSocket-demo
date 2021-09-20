@@ -7,8 +7,8 @@
     "doc": "docs"
   },
   "scripts": {
-    "build:client": "node build/build",
-    "build:client:prod": "node build/build --prod"
+    "build": "node build/build",
+    "build:prod": "node build/build --prod"
   },
   "repository": {
     "type": "git",
