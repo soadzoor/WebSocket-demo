@@ -120,6 +120,10 @@ export class WebServer
 		});
 
 		const config = this._config;
+		if (!this._config.env)
+		{
+			this._config.env = "prod";
+		}
 
 		this._app.use(express.static(`../frontend/build/${config.env}/`));
 		this._app.use(favicon(`../frontend/build/${config.env}/assets/images/cursor.svg`));
