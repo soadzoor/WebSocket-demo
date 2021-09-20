@@ -2,6 +2,25 @@ import express from "express";
 import expressWs from "express-ws";
 import {IncomingMessage} from "http";
 
+interface IClientMessage
+{
+	type: "positionChange" | "click";
+	data: IUser | IClickData;
+}
+
+interface IServerMessage
+{
+	type: "positionChange" | "click"; 
+	data: IUser[] | IClickData[];
+}
+
+interface IClickData
+{
+	id: string;
+	x: number;
+	y: number;
+}
+
 interface IUser
 {
 	id: string;
@@ -21,7 +40,9 @@ export class WebServer
 	private _app = express();
 	private _expressWs = expressWs(this._app);
 
+	private _clicks: IClickData[] = [];
 	private _users: IUserWithSocket[] = [];
+	private _previousStringifiedUsersObject: string = "";
 	private _tickFrequency = 60; // Hz
 	private _timeOutDelay = 1000 / this._tickFrequency;
 
@@ -51,21 +72,29 @@ export class WebServer
 				name: "placeholder"
 			};
 
-			socket.onmessage = (event: MessageEvent) =>
+			socket.onmessage = (event: MessageEvent<string>) =>
 			{
-				userData = JSON.parse(event.data);
-				const existingUserData = this._users.find(u => u.id === userData.id);
-				if (existingUserData)
+				const message: IClientMessage = JSON.parse(event.data);
+				if (message.type === "positionChange")
 				{
-					existingUserData.x = userData.x;
-					existingUserData.y = userData.y;
+					userData = message.data as IUser;
+					const existingUserData = this._users.find(u => u.id === userData.id);
+					if (existingUserData)
+					{
+						existingUserData.x = userData.x;
+						existingUserData.y = userData.y;
+					}
+					else
+					{
+						this._users.push({
+							...userData,
+							socket: socket
+						});
+					}
 				}
-				else
+				else if (message.type === "click")
 				{
-					this._users.push({
-						...userData,
-						socket: socket
-					});
+					this._clicks.push(message.data as IClickData);
 				}
 			};
 
@@ -85,20 +114,48 @@ export class WebServer
 
 	private tick = () =>
 	{
-		for (const user of this._users)
+		const stringifiedUsersObject = JSON.stringify(this._users);
+		if (this._previousStringifiedUsersObject !== stringifiedUsersObject)
 		{
-			const usersExceptTheReceiver = this._users
-				.filter(u => u.id !== user.id && u.x != null && u.y != null)
-				.map(u =>
-				{
-					const ret = {...u};
-					delete ret.socket;
+			this._previousStringifiedUsersObject = stringifiedUsersObject;
 
-					return ret;
-				});
+			for (const user of this._users)
+			{
+				const userDataToSend = this._users
+					.filter(u => u.id !== user.id && u.x != null && u.y != null) // we don't send it back to the original sender
+					.map(u =>
+					{
+						const ret = {...u};
+						delete ret.socket;
 
+						return ret;
+					});
 
-			user.socket?.send(JSON.stringify(usersExceptTheReceiver));
+				const message: IServerMessage = {
+					type: "positionChange",
+					data: userDataToSend
+				};
+
+				user.socket?.send(JSON.stringify(message));
+			}
+		}
+
+		if (this._clicks.length > 0)
+		{
+			for (const user of this._users)
+			{
+				const clickDataToSend: IClickData[] = this._clicks
+					.filter(clickData => clickData.id !== user.id) // we don't send it back to the original sender
+
+				const message: IServerMessage = {
+					type: "click",
+					data: clickDataToSend
+				};
+
+				user.socket?.send(JSON.stringify(message));
+			}
+
+			this._clicks.length = 0;
 		}
 
 		setTimeout(this.tick, this._timeOutDelay);

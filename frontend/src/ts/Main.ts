@@ -1,11 +1,31 @@
 import {PromptWindow} from "ui/popups/PromptWindow";
 import {ColorUtils, IRGBObject} from "utils/ColorUtils";
+import {HTMLUtils} from "utils/HTMLUtils";
 import {MathUtils} from "utils/MathUtils";
 
 interface IVec2
 {
 	x: number | null;
 	y: number | null;
+}
+
+interface IClientMessage
+{
+	type: "positionChange" | "click";
+	data: IUser | IClickData;
+}
+
+interface IServerMessage
+{
+	type: "positionChange" | "click";
+	data: IUser[] | IClickData[];
+}
+
+interface IClickData
+{
+	id: string;
+	x: number;
+	y: number;
 }
 
 interface IUser
@@ -28,6 +48,7 @@ export class Main
 	private _usersData: IUser[] = [];
 	private _userElements: HTMLElement[] = [];
 
+	// Normalized coords
 	private _previousCursorPos: IVec2 = {
 		x: null,
 		y: null
@@ -53,7 +74,26 @@ export class Main
 
 		this._webSocket.addEventListener("message", (event: MessageEvent) =>
 		{
-			this._usersData = JSON.parse(event.data);
+			const message: IServerMessage = JSON.parse(event.data);
+			
+			if (message.type === "positionChange")
+			{
+				this._usersData = message.data as IUser[];
+			}
+			else if (message.type === "click")
+			{
+				const clicksData = message.data as IClickData[];
+
+				for (const clickData of clicksData)
+				{
+					const user = this._usersData.find(u => u.id === clickData.id);
+
+					if (user)
+					{
+						HTMLUtils.popCircle(user.color, this._playground, clickData.x * window.innerWidth, clickData.y * window.innerHeight);
+					}
+				}
+			}
 		});
 
 		this._name = await PromptWindow.open("What's your name?", "", "", {backdrop: false});
@@ -68,6 +108,8 @@ export class Main
 
 		if (this._name)
 		{
+			this._playground.addEventListener("touchstart", this.onTouchStart);
+			this._playground.addEventListener("mousedown", this.onMouseDown);
 			window.addEventListener("mousemove", this.onMouseMove);
 			window.addEventListener("touchmove", this.onTouchMove);
 
@@ -76,6 +118,38 @@ export class Main
 
 		this._webSocket.send(JSON.stringify(selfData));
 		this.tick();
+	}
+
+	private onTouchStart = (event: TouchEvent) =>
+	{
+		event.preventDefault();
+		if (event.touches.length === 1)
+		{
+			this.onPointerDown(event.touches[0].clientX, event.touches[0].clientY);
+		}
+	};
+
+	private onMouseDown = (event: MouseEvent) =>
+	{
+		this.onPointerDown(event.clientX, event.clientY);
+	};
+
+	private onPointerDown(x: number, y: number)
+	{
+		this.onPointerMove(x, y);
+
+		HTMLUtils.popCircle(this._color, this._playground, x, y);
+
+		const message: IClientMessage = {
+			type: "click",
+			data: {
+				id: this._id,
+				x: x / window.innerWidth,
+				y: y / window.innerHeight
+			}
+		};
+
+		this._webSocket.send(JSON.stringify(message));
 	}
 
 	private onMouseMove = (event: MouseEvent) =>
@@ -93,8 +167,8 @@ export class Main
 
 	private onPointerMove(x: number, y: number)
 	{
-		this._cursorPos.x = x;
-		this._cursorPos.y = y;
+		this._cursorPos.x = x / window.innerWidth;
+		this._cursorPos.y = y / window.innerHeight;
 	}
 
 	private createUserElement(userData: IUser)
@@ -111,7 +185,7 @@ export class Main
 		const inverseColor = `rgb(${255 - colorObject.r}, ${255 - colorObject.g}, ${255 - colorObject.b})`;
 		newUserName.style.color = inverseColor;
 		newUserName.textContent = userData.name;
-		newUserContainer.style.transform = `translate(${userData.x}px, ${userData.y}.px)`;
+		newUserContainer.style.transform = `translate(${(userData.x as number)*window.innerWidth}px, ${(userData.y as number)*window.innerHeight}.px)`;
 
 		const newUserCursor = document.createElement("div");
 		newUserCursor.classList.add("userCursor");
@@ -131,7 +205,7 @@ export class Main
 		else
 		{
 			userElement.classList.remove("hidden");
-			const newTransform = `translate(${x}px, ${y}px)`;
+			const newTransform = `translate(${x*window.innerWidth}px, ${y*window.innerHeight}px)`;
 			if (newTransform !== userElement.style.transform)
 			{
 				userElement.style.transform = newTransform;
@@ -200,12 +274,15 @@ export class Main
 		this.updateUsers();
 		if (this._cursorPos.x !== this._previousCursorPos.x || this._cursorPos.y !== this._previousCursorPos.y)
 		{
-			const objectToSend = {
-				id: this._id,
-				name: this._name,
-				color: this._color,
-				x: this._cursorPos.x,
-				y: this._cursorPos.y,
+			const objectToSend: IClientMessage = {
+				type: "positionChange",
+				data: {
+					id: this._id,
+					name: this._name,
+					color: this._color,
+					x: this._cursorPos.x,
+					y: this._cursorPos.y,
+				}
 			}
 			this._webSocket.send(JSON.stringify(objectToSend));
 

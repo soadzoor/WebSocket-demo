@@ -110,3 +110,24 @@ input {
 	text-align: center;
 	border-radius: 5px;
 }
+
+.poppingCandidate {
+	position: absolute;
+	pointer-events: none;
+	touch-action: none;
+	font-size: 200px !important;
+	overflow: hidden;
+	transform: translate(-50%, -50%);
+	border: 1px solid;
+	width: 10px;
+	height: 10px;
+	border-radius: 100%;
+	opacity: 1;
+	transition: 0.7s ease-out all;
+}
+
+.popping {
+	width: 500px;
+	height: 500px;
+	opacity: 0 !important;
+}
